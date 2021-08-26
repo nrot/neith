@@ -1,3 +1,4 @@
+#[macro_use]
 mod model;
 
 #[cfg(test)]
@@ -8,6 +9,13 @@ mod tests {
     }
     #[test]
     fn model_macro(){
-        model!(User, );
+        let z: u128;
+        let us: u64;
+        model!(
+            User[
+                id, u128, null=true;
+                username, u64;
+            ]
+        )
     }
 }
