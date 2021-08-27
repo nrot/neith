@@ -1,5 +1,9 @@
+use std::string::String;
+
 #[macro_use]
 mod model;
+
+use model::DbModel;
 
 #[cfg(test)]
 mod tests {
@@ -16,6 +20,17 @@ mod tests {
                 id, u128, null=true;
                 username, u64;
             ]
-        )
+        );
+    }
+    #[test]
+    fn some_testing(){
+        let s = String::new();
+        let mut v: Vec<String> = Vec::new();
+        v.push(String::from("Some test"));
+        struct Test{
+            var: String
+        }
+        let mut tst = Test{var: String::new()};
+        tst.var.push_str("dawd");
     }
 }
