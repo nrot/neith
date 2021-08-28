@@ -1,15 +1,11 @@
 use std::collections::HashMap;
 use std::string::String;
 use std::collections::hash_set::Union;
+use crate::query;
 
-fn to_where<I: i8 + i16 + i32 + i64 + i128>(value: I,   ) -> &String{
-    let mut re = String::new();
-    &re
-}
-
-pub trait DbModel{
+pub trait DbModel<T>{
     fn new()->Self;
-    fn filter(&self, query: HashMap<String, String>) -> &Self;
+    fn filter(&self, query: HashMap<String, String>) -> T;
     fn sql(&self)->&String;
     // fn execute(&self) -> Vec<Self>;
     fn select(&self) -> &Self;
@@ -19,7 +15,7 @@ pub struct Column<T>{
     pub name: String,
     pub rtype: String,
     pub default: Option<T>,
-    pub var: Option<T>,
+    // pub var: Option<T>,
     pub pk: bool,
     pub null: bool,
     pub unique: bool,
@@ -40,13 +36,14 @@ macro_rules! def_or_none {
 
 macro_rules! arg_or_none{
     ()=>{None};
-    ($arg:expr)=>{$arg};
+    ($arg:expr)=>{Some($arg)};
 }
 
 #[macro_export]
 macro_rules! model{
     (
-        $table_name:ident
+        $table_name:ident,
+        $table_access: ident
         [$(
             $column_name:ident,
             $column_type:ty $(,)?
@@ -59,18 +56,27 @@ macro_rules! model{
     ) => {
         use std::collections::HashMap;
         use std::collections::HashSet;
+        use std::clone;
         use std::string::String;
         use crate::DbModel;
         use crate::Column;
+
+        //Структура для хранения одной записи
         pub struct $table_name{
+            columns: HashSet<String>,
+            $($column_name: Option<$column_type>,)+
+        }
+
+        //Структура для работы со всей таблицей
+        pub struct  $table_access{
             filter: String,
             raw_sql: String,
             columns: HashSet<String>,
             $($column_name: Column<$column_type>,)+
         }
-        impl DbModel for $table_name{
-            fn new() -> $table_name{
-                let mut model = $table_name{
+        impl DbModel<$table_name> for $table_access{
+            fn new() -> $table_access{
+                let mut model = $table_access{
                     filter: String::new(),
                     raw_sql: String::new(),
                     columns: HashSet::new(),
@@ -78,7 +84,6 @@ macro_rules! model{
                         name: String::from(stringify!($column_name)),
                         rtype: String::from(stringify!($column_type)),
                         default: arg_or_none!($($column_default)?),
-                        var: None,
                         pk: def_or_none!($($column_pk)?, false),
                         null: def_or_none!($($column_null)?, false),
                         unique: def_or_none!($($column_unique)?, false),
@@ -88,14 +93,18 @@ macro_rules! model{
                 $(model.columns.insert(String::from(stringify!($column_name)));)+
                 model
             }
-            fn filter(&self, query: HashMap<String, String>) -> &$table_name{
+            fn filter(&self, query: HashMap<String, String>) -> $table_name{
+                let mut re = $table_name{
+                    columns: self.columns.clone(),
+                    $($column_name: arg_or_none!($($column_default)?),)+
+                };
                 for key in query.keys(){
 
                     if !self.columns.contains(key){
                         continue;
                     }
                 }
-                self
+                re
             }
             fn select(&self) -> &Self{
                 self
