@@ -17,10 +17,7 @@ pub struct Query{
     sql: String
 }
 
-pub type Condition = String;
-// pub struct Condition{
-//     sql: String
-// }
+type Condition = String;
 
 pub trait Protection{
     fn protected(self)->Self;

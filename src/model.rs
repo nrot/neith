@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::string::String;
 use std::collections::hash_set::Union;
 use crate::{query, types};
+use postgres::Client;
 
 pub trait DbModel<T>{
-    fn new()->Self;
+    fn new(conn:Client)->Self;
     // fn filter(&self, query: HashMap<String, String>) -> T;
     fn sql(&self)->&String;
     // fn execute(&self) -> Vec<Self>;
@@ -60,7 +61,7 @@ macro_rules! model{
         use std::string::String;
         use crate::DbModel;
         use crate::Column;
-        use r2d2::PooledConnection;
+        use postgres::{Client};
 
         //Структура для хранения одной записи
         pub struct $table_name{
@@ -76,7 +77,7 @@ macro_rules! model{
             $($column_name: Column<$column_type>,)+
         }
         impl DbModel<$table_name> for $table_access{
-            fn new<T>(pool: PooledConnection<ManageConnection>) -> $table_access{
+            fn new(mut connection: Client) -> $table_access{
                 let mut model = $table_access{
                     filter: String::new(),
                     raw_sql: String::new(),
@@ -92,6 +93,7 @@ macro_rules! model{
                     },)+
                 };
                 $(model.columns.insert(String::from(stringify!($column_name)));)+
+                connection.batch_execute("");
                 model
             }
             // fn filter(&self, column: String, value: DBType) -> $table_name{

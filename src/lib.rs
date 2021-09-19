@@ -50,6 +50,7 @@ mod tests {
         let mut conn = pool.get().unwrap();
         let a: i16 = 13;
         conn.execute("", &[&a]).unwrap();
+        conn.batch_execute("").unwrap();
     }
 
     trait TestTrait{
