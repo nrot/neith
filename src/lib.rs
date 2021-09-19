@@ -1,9 +1,14 @@
 #[macro_use]
 mod model;
 mod query;
+mod types;
 
 use model::DbModel;
 use model::Column;
+use r2d2::Pool;
+use r2d2::ManageConnection;
+use r2d2_postgres::PostgresConnectionManager;
+use r2d2_postgres::postgres::NoTls;
 
 
 
@@ -11,6 +16,8 @@ use model::Column;
 mod tests {
     use std::io::empty;
     use std::collections::HashSet;
+    use r2d2::{Pool, ManageConnection};
+    use r2d2_postgres::postgres::NoTls;
 
     fn print_type_of<T>(_: &T) {
         println!("Type: {}", std::any::type_name::<T>())
@@ -34,19 +41,32 @@ mod tests {
         );
     }
     #[test]
-    fn some_testing(){
-        let s = String::new();
-        let mut v: Vec<String> = Vec::new();
-        v.push(String::from("Some test"));
-        struct Test{
-            var: String,
-            o: Option<i64>
-        }
-        let mut tst = Test{var: String::new(), o: arg_or_none!()};
-        tst.var.push_str("dawd");
-        let mut hs = HashSet::new();
-        hs.insert(1234);
-        let var: i16 = 32;
-        test_types(var as i128);
+    fn test_r2d2(){
+
+        let manager = r2d2_postgres::PostgresConnectionManager::new("".parse().unwrap(), NoTls);
+
+        let pool = r2d2::Pool::new(manager).unwrap();
+
+        let mut conn = pool.get().unwrap();
+        let a: i16 = 13;
+        conn.execute("", &[&a]).unwrap();
     }
+
+    trait TestTrait{
+        fn to_val(&self)->String;
+    }
+
+    impl TestTrait for i64{
+        fn to_val(&self) -> String {
+            let mut s: String = self.to_string();
+            return s
+        }
+    }
+
+    #[test]
+    fn test_trait(){
+        let a: i64 = 32;
+        println!("{}", a.to_val());
+    }
+
 }

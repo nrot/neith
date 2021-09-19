@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::string::String;
 use std::collections::hash_set::Union;
-use crate::query;
+use crate::{query, types};
 
 pub trait DbModel<T>{
     fn new()->Self;
-    fn filter(&self, query: HashMap<String, String>) -> T;
+    // fn filter(&self, query: HashMap<String, String>) -> T;
     fn sql(&self)->&String;
     // fn execute(&self) -> Vec<Self>;
     fn select(&self) -> &Self;
@@ -60,6 +60,7 @@ macro_rules! model{
         use std::string::String;
         use crate::DbModel;
         use crate::Column;
+        use r2d2::PooledConnection;
 
         //Структура для хранения одной записи
         pub struct $table_name{
@@ -75,7 +76,7 @@ macro_rules! model{
             $($column_name: Column<$column_type>,)+
         }
         impl DbModel<$table_name> for $table_access{
-            fn new() -> $table_access{
+            fn new<T>(pool: PooledConnection<ManageConnection>) -> $table_access{
                 let mut model = $table_access{
                     filter: String::new(),
                     raw_sql: String::new(),
@@ -93,19 +94,13 @@ macro_rules! model{
                 $(model.columns.insert(String::from(stringify!($column_name)));)+
                 model
             }
-            fn filter(&self, query: HashMap<String, String>) -> $table_name{
-                let mut re = $table_name{
-                    columns: self.columns.clone(),
-                    $($column_name: arg_or_none!($($column_default)?),)+
-                };
-                for key in query.keys(){
-
-                    if !self.columns.contains(key){
-                        continue;
-                    }
-                }
-                re
-            }
+            // fn filter(&self, column: String, value: DBType) -> $table_name{
+            //     let mut re = $table_name{
+            //         columns: self.columns.clone(),
+            //         $($column_name: arg_or_none!($($column_default)?),)+
+            //     };
+            //     re
+            // }
             fn select(&self) -> &Self{
                 self
             }
