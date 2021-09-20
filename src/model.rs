@@ -77,7 +77,7 @@ macro_rules! model{
             $($column_name: Column<$column_type>,)+
         }
         impl DbModel<$table_name> for $table_access{
-            fn new(mut connection: Client) -> $table_access{ //TODO: Переделать на универсальный SQL клиент 
+            fn new(mut connection: Client) -> $table_access{ //FIXME: Переделать на универсальный SQL клиент 
                 let mut model = $table_access{
                     filter: String::new(),
                     raw_sql: String::new(),

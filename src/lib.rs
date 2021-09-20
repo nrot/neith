@@ -14,10 +14,11 @@ use r2d2_postgres::postgres::NoTls;
 
 #[cfg(test)]
 mod tests {
-    use std::io::empty;
+    use std::{any::Any, io::empty};
     use std::collections::HashSet;
     use r2d2::{Pool, ManageConnection};
     use r2d2_postgres::postgres::NoTls;
+    use postgres::types::{ToSql, Type, private::BytesMut};
 
     fn print_type_of<T>(_: &T) {
         println!("Type: {}", std::any::type_name::<T>())
@@ -48,9 +49,14 @@ mod tests {
         let pool = r2d2::Pool::new(manager).unwrap();
 
         let mut conn = pool.get().unwrap();
+        let mut params: Vec<&(dyn ToSql + Sync)> = Vec::new();
+        let tmp = String::from("Test").clone();
         let a: i16 = 13;
-        conn.execute("", &[&a]).unwrap();
-        conn.batch_execute("").unwrap();
+        params.push(&tmp);
+        params.push(&a);
+        
+        conn.execute("", &params[..]).unwrap();
+        // conn.batch_execute("").unwrap();
     }
 
     trait TestTrait{
