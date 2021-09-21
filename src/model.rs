@@ -6,10 +6,9 @@ use postgres::Client;
 
 pub trait DbModel<T>{
     fn new(conn:Client)->Self;
-    // fn filter(&self, query: HashMap<String, String>) -> T;
-    fn sql(&self)->&String;
-    // fn execute(&self) -> Vec<Self>;
-    fn select(&self) -> &Self;
+    fn table_create(&self)-> bool;
+    // fn execute(&self) -> Vec<T>;
+    fn select(&self) -> query::Query;
 }
 
 pub struct Column<T>{
@@ -61,27 +60,26 @@ macro_rules! model{
         use std::string::String;
         use crate::DbModel;
         use crate::Column;
+        use crate::query::{Query};
         use postgres::{Client};
 
         //Структура для хранения одной записи
         pub struct $table_name{
-            columns: HashSet<String>,
-            $($column_name: Option<$column_type>,)+
+            pub columns: HashSet<String>,
+            $(pub $column_name: Option<$column_type>,)+
         }
 
         //Структура для работы со всей таблицей
         pub struct  $table_access{
-            filter: String,
-            raw_sql: String,
             columns: HashSet<String>,
+            columns_list: String,
             $($column_name: Column<$column_type>,)+
         }
-        impl DbModel<$table_name> for $table_access{
+        impl<'a> DbModel<$table_name> for $table_access{
             fn new(mut connection: Client) -> $table_access{ //FIXME: Переделать на универсальный SQL клиент 
                 let mut model = $table_access{
-                    filter: String::new(),
-                    raw_sql: String::new(),
                     columns: HashSet::new(),
+                    columns_list: String::new(),
                     $($column_name: Column{
                         name: String::from(stringify!($column_name)),
                         rtype: String::from(stringify!($column_type)),
@@ -93,21 +91,20 @@ macro_rules! model{
                     },)+
                 };
                 $(model.columns.insert(String::from(stringify!($column_name)));)+
-                connection.batch_execute("");
+                let mut tmp_vec: Vec<String> = Vec::new();
+                for column in model.columns.iter(){
+                    tmp_vec.push(column.to_string())
+                }
+                model.columns_list.push_str(&tmp_vec.join(", ").to_owned());
                 model
             }
-            // fn filter(&self, column: String, value: DBType) -> $table_name{
-            //     let mut re = $table_name{
-            //         columns: self.columns.clone(),
-            //         $($column_name: arg_or_none!($($column_default)?),)+
-            //     };
-            //     re
-            // }
-            fn select(&self) -> &Self{
-                self
+            fn table_create(&self)-> bool{
+                true
             }
-            fn sql(&self) -> &String{
-                &self.raw_sql
+            fn select(&self) -> Query{
+                let mut query = Query::new();
+                query.suffix_sql(format!("SELECT {lst} FROM {tbl} WHERE", lst=self.columns_list, tbl=stringify!($table_name)).to_string());
+                query
             }
         }
     }
