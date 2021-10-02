@@ -1,14 +1,13 @@
-use std::collections::HashMap;
 use std::string::String;
-use std::collections::hash_set::Union;
-use crate::{query, types};
-use postgres::Client;
+use crate::{query};
+use r2d2::{ManageConnection, PooledConnection};
 
-pub trait DbModel<T>{
-    fn new(conn:Client)->Self;
+pub trait DbModel<'a, T, M: ManageConnection>{
+    fn new(conn:&'a mut PooledConnection<M>)->Self;
     fn table_create(&self)-> bool;
     // fn execute(&self) -> Vec<T>;
     fn select(&self) -> query::Query;
+    fn fetch(&mut self, q: query::Query)->Vec<T>;
 }
 
 pub struct Column<T>{
@@ -43,7 +42,7 @@ macro_rules! arg_or_none{
 macro_rules! model{
     (
         $table_name:ident,
-        $table_access: ident
+        $table_access: ident:
         [$(
             $column_name:ident,
             $column_type:ty $(,)?
@@ -54,14 +53,12 @@ macro_rules! model{
             $(, readonly=$column_readonly:expr)? $(,)?
         ;)+]
     ) => {
-        use std::collections::HashMap;
         use std::collections::HashSet;
-        use std::clone;
         use std::string::String;
         use crate::DbModel;
         use crate::Column;
         use crate::query::{Query};
-        use postgres::{Client};
+        use r2d2::{ManageConnection, PooledConnection};
 
         //Структура для хранения одной записи
         pub struct $table_name{
@@ -70,16 +67,18 @@ macro_rules! model{
         }
 
         //Структура для работы со всей таблицей
-        pub struct  $table_access{
+        pub struct  $table_access<'a, M>{
             columns: HashSet<String>,
             columns_list: String,
+            connection: &'a mut PooledConnection<M>,
             $($column_name: Column<$column_type>,)+
         }
-        impl<'a> DbModel<$table_name> for $table_access{
-            fn new(mut connection: Client) -> $table_access{ //FIXME: Переделать на универсальный SQL клиент 
+        impl<'a, M: ManageConnection> DbModel<'a, $table_name, M> for $table_access<'a, M>{
+            fn new(connection: &'a mut PooledConnection<M>) -> $table_access{ //FIXME: Переделать на универсальный SQL клиент 
                 let mut model = $table_access{
                     columns: HashSet::new(),
                     columns_list: String::new(),
+                    connection: connection,
                     $($column_name: Column{
                         name: String::from(stringify!($column_name)),
                         rtype: String::from(stringify!($column_type)),
@@ -105,6 +104,23 @@ macro_rules! model{
                 let mut query = Query::new();
                 query.suffix_sql(format!("SELECT {lst} FROM {tbl} WHERE", lst=self.columns_list, tbl=stringify!($table_name)).to_string());
                 query
+            }
+            fn fetch(&mut self, q: Query)->Vec<$table_name>{
+                let mut result: Vec<$table_name> = Vec::new();
+                let params = q.get_params();
+                let res = self.connection.query(q.get_query().as_str(), &params[..]);
+                match res{
+                    Err(_)=>{},
+                    Ok(rows)=>{
+                        for row in rows{
+                            result.push($table_name{
+                                columns: self.columns.clone(),
+                                $($column_name:Some(row.try_get(stringify!($column_name)).unwrap()),)+
+                            })
+                        }
+                    }
+                }
+                result
             }
         }
     }

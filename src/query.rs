@@ -100,7 +100,13 @@ impl<'a> Query<'a>{
         self.custom_add_query(query, "OR")
     }
     pub fn suffix_sql(&mut self, sql: String)->&Self{
-        self.sql.insert_str(0, format!("{s} ", s=&sql.trim()));
+        self.sql.insert_str(0, &format!("{s} ", s=&sql.trim()));
         self
+    }
+    pub fn get_query(&self)->String{
+        self.sql.clone()
+    }
+    pub fn get_params(&self)->Vec<&'a(ToSql + Sync)>{
+        self.values.clone()
     }
 }
